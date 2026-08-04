@@ -15,6 +15,7 @@ import { Route as AppIndexRouteImport } from './routes/app.index'
 import { Route as AppAlertsRouteImport } from './routes/app.alerts'
 import { Route as AppAnalyticsRouteImport } from './routes/app.analytics'
 import { Route as AppCamerasRouteImport } from './routes/app.cameras'
+import { Route as AppHistoryRouteImport } from './routes/app.history'
 import { Route as AppLiveRouteImport } from './routes/app.live'
 import { Route as AppMapRouteImport } from './routes/app.map'
 
@@ -48,6 +49,11 @@ const AppCamerasRoute = AppCamerasRouteImport.update({
   path: '/cameras',
   getParentRoute: () => AppRoute,
 } as any)
+const AppHistoryRoute = AppHistoryRouteImport.update({
+  id: '/history',
+  path: '/history',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppLiveRoute = AppLiveRouteImport.update({
   id: '/live',
   path: '/live',
@@ -65,6 +71,7 @@ export interface FileRoutesByFullPath {
   '/app/alerts': typeof AppAlertsRoute
   '/app/analytics': typeof AppAnalyticsRoute
   '/app/cameras': typeof AppCamerasRoute
+  '/app/history': typeof AppHistoryRoute
   '/app/live': typeof AppLiveRoute
   '/app/map': typeof AppMapRoute
   '/app/': typeof AppIndexRoute
@@ -74,6 +81,7 @@ export interface FileRoutesByTo {
   '/app/alerts': typeof AppAlertsRoute
   '/app/analytics': typeof AppAnalyticsRoute
   '/app/cameras': typeof AppCamerasRoute
+  '/app/history': typeof AppHistoryRoute
   '/app/live': typeof AppLiveRoute
   '/app/map': typeof AppMapRoute
   '/app': typeof AppIndexRoute
@@ -85,6 +93,7 @@ export interface FileRoutesById {
   '/app/alerts': typeof AppAlertsRoute
   '/app/analytics': typeof AppAnalyticsRoute
   '/app/cameras': typeof AppCamerasRoute
+  '/app/history': typeof AppHistoryRoute
   '/app/live': typeof AppLiveRoute
   '/app/map': typeof AppMapRoute
   '/app/': typeof AppIndexRoute
@@ -97,6 +106,7 @@ export interface FileRouteTypes {
     | '/app/alerts'
     | '/app/analytics'
     | '/app/cameras'
+    | '/app/history'
     | '/app/live'
     | '/app/map'
     | '/app/'
@@ -106,6 +116,7 @@ export interface FileRouteTypes {
     | '/app/alerts'
     | '/app/analytics'
     | '/app/cameras'
+    | '/app/history'
     | '/app/live'
     | '/app/map'
     | '/app'
@@ -116,6 +127,7 @@ export interface FileRouteTypes {
     | '/app/alerts'
     | '/app/analytics'
     | '/app/cameras'
+    | '/app/history'
     | '/app/live'
     | '/app/map'
     | '/app/'
@@ -170,6 +182,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCamerasRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/history': {
+      id: '/app/history'
+      path: '/history'
+      fullPath: '/app/history'
+      preLoaderRoute: typeof AppHistoryRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/live': {
       id: '/app/live'
       path: '/live'
@@ -191,6 +210,7 @@ interface AppRouteChildren {
   AppAlertsRoute: typeof AppAlertsRoute
   AppAnalyticsRoute: typeof AppAnalyticsRoute
   AppCamerasRoute: typeof AppCamerasRoute
+  AppHistoryRoute: typeof AppHistoryRoute
   AppLiveRoute: typeof AppLiveRoute
   AppMapRoute: typeof AppMapRoute
   AppIndexRoute: typeof AppIndexRoute
@@ -200,6 +220,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAlertsRoute: AppAlertsRoute,
   AppAnalyticsRoute: AppAnalyticsRoute,
   AppCamerasRoute: AppCamerasRoute,
+  AppHistoryRoute: AppHistoryRoute,
   AppLiveRoute: AppLiveRoute,
   AppMapRoute: AppMapRoute,
   AppIndexRoute: AppIndexRoute,
