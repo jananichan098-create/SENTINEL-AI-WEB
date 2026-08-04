@@ -77,7 +77,7 @@ const seedAlerts: SecurityAlert[] = [
   },
 ];
 
-function playAlarm() {
+export function playAlarm() {
   try {
     const Ctx =
       window.AudioContext ||
