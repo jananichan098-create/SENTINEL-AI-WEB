@@ -1,6 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { BellRing, Cpu, Moon, RefreshCw, ShieldAlert, Volume2 } from "lucide-react";
-import { useSentinel } from "@/lib/sentinel-store";
+import {
+  BellRing,
+  Mail,
+  MessageSquare,
+  Moon,
+  RefreshCw,
+  ShieldAlert,
+  Volume2,
+} from "lucide-react";
+import { playAlarm, useSentinel } from "@/lib/sentinel-store";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
