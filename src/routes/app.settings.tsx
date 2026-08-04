@@ -51,7 +51,7 @@ function Row({
 }
 
 function SettingsPage() {
-  const { settings, updateSettings, triggerTestAlert, playAlarm } = useSentinel();
+  const { settings, updateSettings, triggerTestAlert } = useSentinel();
 
   return (
     <div className="space-y-6">
@@ -79,8 +79,28 @@ function SettingsPage() {
           description="Surface floating incident cards on top of every dashboard page."
         >
           <Switch
-            checked={settings.notifications}
-            onCheckedChange={(v) => updateSettings({ notifications: v })}
+            checked={settings.desktopNotifications}
+            onCheckedChange={(v) => updateSettings({ desktopNotifications: v })}
+          />
+        </Row>
+        <Row
+          icon={Mail}
+          title="Daily email digest"
+          description="Send a 24-hour detection summary to the security supervisor."
+        >
+          <Switch
+            checked={settings.emailDigest}
+            onCheckedChange={(v) => updateSettings({ emailDigest: v })}
+          />
+        </Row>
+        <Row
+          icon={MessageSquare}
+          title="SMS on critical events"
+          description="Escalate fire, intrusion and weapon detections to on-call staff."
+        >
+          <Switch
+            checked={settings.smsCritical}
+            onCheckedChange={(v) => updateSettings({ smsCritical: v })}
           />
         </Row>
         <Row
@@ -94,40 +114,20 @@ function SettingsPage() {
           />
         </Row>
         <Row
-          icon={Cpu}
-          title="Detection sensitivity"
-          description="Minimum model confidence required before an alert is raised."
-        >
-          <div className="flex w-full items-center gap-3">
-            <Slider
-              value={[settings.sensitivity]}
-              min={40}
-              max={99}
-              step={1}
-              onValueChange={([v]) => updateSettings({ sensitivity: v ?? settings.sensitivity })}
-            />
-            <span className="w-12 shrink-0 text-right font-mono text-sm">
-              {settings.sensitivity}%
-            </span>
-          </div>
-        </Row>
-        <Row
           icon={RefreshCw}
-          title="Refresh interval"
+          title="Refresh rate"
           description="How often the dashboard polls the inference cluster for new events."
         >
           <div className="flex w-full items-center gap-3">
             <Slider
-              value={[settings.refreshInterval]}
-              min={1}
-              max={30}
-              step={1}
-              onValueChange={([v]) =>
-                updateSettings({ refreshInterval: v ?? settings.refreshInterval })
-              }
+              value={[settings.refreshRate]}
+              min={5}
+              max={120}
+              step={5}
+              onValueChange={([v]) => updateSettings({ refreshRate: v ?? settings.refreshRate })}
             />
             <span className="w-12 shrink-0 text-right font-mono text-sm">
-              {settings.refreshInterval}s
+              {settings.refreshRate}s
             </span>
           </div>
         </Row>
@@ -142,11 +142,12 @@ function SettingsPage() {
           <Button variant="destructive" className="gap-2" onClick={triggerTestAlert}>
             <ShieldAlert className="size-4" /> Trigger test emergency
           </Button>
-          <Button variant="outline" className="gap-2" onClick={playAlarm}>
+          <Button variant="outline" className="gap-2" onClick={() => playAlarm()}>
             <Volume2 className="size-4" /> Test alarm sound
           </Button>
         </div>
       </div>
+
 
       <div className="glass rounded-2xl p-5">
         <h2 className="text-base font-semibold">Backend integration</h2>
