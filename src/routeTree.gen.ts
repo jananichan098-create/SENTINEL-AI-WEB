@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as AppIndexRouteImport } from './routes/app.index'
 import { Route as AppAlertsRouteImport } from './routes/app.alerts'
+import { Route as AppCamerasRouteImport } from './routes/app.cameras'
 import { Route as AppLiveRouteImport } from './routes/app.live'
 import { Route as AppMapRouteImport } from './routes/app.map'
 
@@ -36,6 +37,11 @@ const AppAlertsRoute = AppAlertsRouteImport.update({
   path: '/alerts',
   getParentRoute: () => AppRoute,
 } as any)
+const AppCamerasRoute = AppCamerasRouteImport.update({
+  id: '/cameras',
+  path: '/cameras',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppLiveRoute = AppLiveRouteImport.update({
   id: '/live',
   path: '/live',
@@ -51,6 +57,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
   '/app/alerts': typeof AppAlertsRoute
+  '/app/cameras': typeof AppCamerasRoute
   '/app/live': typeof AppLiveRoute
   '/app/map': typeof AppMapRoute
   '/app/': typeof AppIndexRoute
@@ -58,6 +65,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/app/alerts': typeof AppAlertsRoute
+  '/app/cameras': typeof AppCamerasRoute
   '/app/live': typeof AppLiveRoute
   '/app/map': typeof AppMapRoute
   '/app': typeof AppIndexRoute
@@ -67,20 +75,29 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
   '/app/alerts': typeof AppAlertsRoute
+  '/app/cameras': typeof AppCamerasRoute
   '/app/live': typeof AppLiveRoute
   '/app/map': typeof AppMapRoute
   '/app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/app' | '/app/alerts' | '/app/live' | '/app/map' | '/app/'
+  fullPaths:
+    | '/'
+    | '/app'
+    | '/app/alerts'
+    | '/app/cameras'
+    | '/app/live'
+    | '/app/map'
+    | '/app/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/app/alerts' | '/app/live' | '/app/map' | '/app'
+  to: '/' | '/app/alerts' | '/app/cameras' | '/app/live' | '/app/map' | '/app'
   id:
     | '__root__'
     | '/'
     | '/app'
     | '/app/alerts'
+    | '/app/cameras'
     | '/app/live'
     | '/app/map'
     | '/app/'
@@ -121,6 +138,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAlertsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/cameras': {
+      id: '/app/cameras'
+      path: '/cameras'
+      fullPath: '/app/cameras'
+      preLoaderRoute: typeof AppCamerasRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/live': {
       id: '/app/live'
       path: '/live'
@@ -140,6 +164,7 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppAlertsRoute: typeof AppAlertsRoute
+  AppCamerasRoute: typeof AppCamerasRoute
   AppLiveRoute: typeof AppLiveRoute
   AppMapRoute: typeof AppMapRoute
   AppIndexRoute: typeof AppIndexRoute
@@ -147,6 +172,7 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppAlertsRoute: AppAlertsRoute,
+  AppCamerasRoute: AppCamerasRoute,
   AppLiveRoute: AppLiveRoute,
   AppMapRoute: AppMapRoute,
   AppIndexRoute: AppIndexRoute,
