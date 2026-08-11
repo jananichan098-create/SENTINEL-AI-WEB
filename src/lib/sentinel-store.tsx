@@ -253,9 +253,7 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
           ? l.includes("smoke")
             ? "Smoke Detected"
             : "Fire Detected"
-          : peopleCount
-            ? `Crowd Detected — ${peopleCount} people`
-            : "Crowd Detected",
+          : "Crowd Detected",
         severity: isFire ? "high" : "medium",
         cameraId,
         building: building?.name ?? cameraId,
