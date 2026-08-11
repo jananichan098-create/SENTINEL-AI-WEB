@@ -5,6 +5,7 @@ import { AppSidebar } from "@/components/sentinel/AppSidebar";
 import { TopBar } from "@/components/sentinel/TopBar";
 import { SentinelFooter } from "@/components/sentinel/SentinelFooter";
 import { EmergencyOverlay, FloatingAlertPanel } from "@/components/sentinel/AlertPanel";
+import { EmergencyBanner } from "@/components/sentinel/EmergencyBanner";
 import { SentinelProvider } from "@/lib/sentinel-store";
 import { SentinelLogo } from "@/components/sentinel/SentinelLogo";
 
@@ -65,8 +66,10 @@ function AppLayout() {
 
         <div className="flex min-w-0 flex-1 flex-col">
           <TopBar onMenu={() => setMobileOpen(true)} />
+          <EmergencyBanner />
           <main className="flex-1 px-4 py-6 lg:px-6">
             <Outlet />
+
           </main>
           <SentinelFooter />
         </div>

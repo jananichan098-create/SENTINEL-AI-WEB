@@ -17,9 +17,11 @@ function MapSkeleton() {
 
 export function CampusMap({
   emergencyBuildings,
+  warningBuildings,
   onSelect,
 }: {
   emergencyBuildings: BuildingId[];
+  warningBuildings?: BuildingId[] | undefined;
   onSelect?: ((id: BuildingId) => void) | undefined;
 }) {
   const [ready] = useState(true);
@@ -27,7 +29,11 @@ export function CampusMap({
   return (
     <ClientOnly fallback={<MapSkeleton />}>
       <Suspense fallback={<MapSkeleton />}>
-        <CampusMapClient emergencyBuildings={emergencyBuildings} onSelect={onSelect} />
+        <CampusMapClient
+          emergencyBuildings={emergencyBuildings}
+          warningBuildings={warningBuildings}
+          onSelect={onSelect}
+        />
       </Suspense>
     </ClientOnly>
   );
