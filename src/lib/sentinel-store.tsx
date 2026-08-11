@@ -30,6 +30,8 @@ export interface DetectionInput {
   confidence: number;
   cameraId: string;
   buildingId: BuildingId;
+  /** People counted in the frame (used for crowd alerts). */
+  peopleCount?: number;
 }
 
 export type HistoryEvent = SecurityAlert & { snapshot: string };
@@ -247,7 +249,11 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
       const building = BUILDINGS.find((b) => b.id === buildingId);
       const alert: SecurityAlert = {
         id: `ALR-${counter.current++}`,
-        type: isFire ? (l.includes("smoke") ? "Smoke Detected" : "Fire Detected") : "Crowd Forming",
+        type: isFire
+          ? l.includes("smoke")
+            ? "Smoke Detected"
+            : "Fire Detected"
+          : "Crowd Detected",
         severity: isFire ? "high" : "medium",
         cameraId,
         building: building?.name ?? cameraId,
@@ -257,7 +263,8 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
         status: "Active",
       };
       pushAlert(alert);
-      if (isFire) raiseEmergency(alert);
+      // Fire = emergency, crowd = warning — both raise the banner + siren.
+      raiseEmergency(alert);
     },
     [pushAlert, raiseEmergency],
   );

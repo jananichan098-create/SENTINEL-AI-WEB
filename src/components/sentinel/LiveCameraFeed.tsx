@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Camera, CircleStop, Play, Radio, Signal, VideoOff } from "lucide-react";
+import { Camera, CircleStop, Play, Radio, Signal, Users, VideoOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useSentinel } from "@/lib/sentinel-store";
 import type { BuildingId } from "@/lib/sentinel-data";
 
 interface Detection {
-  id: number;
+  id: string;
   label: string;
   confidence: number;
   x: number;
@@ -16,20 +16,80 @@ interface Detection {
   tone: "danger" | "warn" | "primary" | "safe";
 }
 
-const LABELS: { label: string; tone: Detection["tone"] }[] = [
-  { label: "Person Detected", tone: "primary" },
-  { label: "Person Detected", tone: "primary" },
-  { label: "Crowd Detected", tone: "warn" },
-  { label: "Fire Detected", tone: "danger" },
-  { label: "Smoke Detected", tone: "warn" },
-];
-
 const toneClass = {
   danger: "border-danger text-danger bg-danger/12",
   warn: "border-warn text-warn bg-warn/12",
   primary: "border-primary text-primary bg-primary/12",
   safe: "border-safe text-safe bg-safe/12",
 } as const;
+
+/** Flask + YOLOv8 inference endpoint. */
+const DETECT_URL = "http://127.0.0.1:5000/detect";
+/** People in one frame required to classify the scene as a crowd. */
+const CROWD_THRESHOLD = 8;
+
+type RawBox = Record<string, unknown>;
+
+function num(v: unknown): number | null {
+  return typeof v === "number" && Number.isFinite(v) ? v : null;
+}
+
+/** Tolerant parser for common Flask/YOLO response shapes. */
+function parseDetections(payload: unknown, frameW: number, frameH: number): Detection[] {
+  const root = payload as Record<string, unknown> | unknown[] | null;
+  const list: RawBox[] = Array.isArray(root)
+    ? (root as RawBox[])
+    : ((((root as Record<string, unknown>)?.["detections"] ??
+        (root as Record<string, unknown>)?.["boxes"] ??
+        (root as Record<string, unknown>)?.["results"] ??
+        (root as Record<string, unknown>)?.["predictions"]) as RawBox[] | undefined) ?? []);
+
+  return list.flatMap((raw, i) => {
+    const label = String(raw["label"] ?? raw["class"] ?? raw["name"] ?? "person");
+    const conf = num(raw["confidence"]) ?? num(raw["conf"]) ?? num(raw["score"]) ?? 0;
+
+    // bbox as array [x1,y1,x2,y2] or explicit fields
+    const arr = (raw["bbox"] ?? raw["box"] ?? raw["xyxy"]) as unknown;
+    let x1: number | null = null;
+    let y1: number | null = null;
+    let x2: number | null = null;
+    let y2: number | null = null;
+
+    if (Array.isArray(arr) && arr.length >= 4) {
+      x1 = num(arr[0]);
+      y1 = num(arr[1]);
+      x2 = num(arr[2]);
+      y2 = num(arr[3]);
+    } else {
+      x1 = num(raw["x1"]) ?? num(raw["x"]) ?? num(raw["xmin"]);
+      y1 = num(raw["y1"]) ?? num(raw["y"]) ?? num(raw["ymin"]);
+      const w = num(raw["w"]) ?? num(raw["width"]);
+      const h = num(raw["h"]) ?? num(raw["height"]);
+      x2 = num(raw["x2"]) ?? num(raw["xmax"]) ?? (x1 !== null && w !== null ? x1 + w : null);
+      y2 = num(raw["y2"]) ?? num(raw["ymax"]) ?? (y1 !== null && h !== null ? y1 + h : null);
+    }
+
+    if (x1 === null || y1 === null || x2 === null || y2 === null) return [];
+
+    // Normalised coords (0..1) come through as-is; pixel coords scale by frame size.
+    const normalised = x2 <= 1 && y2 <= 1;
+    const sx = normalised ? 100 : 100 / frameW;
+    const sy = normalised ? 100 : 100 / frameH;
+
+    return [
+      {
+        id: `${i}-${label}`,
+        label: label === "person" ? "Person" : label,
+        confidence: Number(((conf <= 1 ? conf * 100 : conf) || 0).toFixed(1)),
+        x: x1 * sx,
+        y: y1 * sy,
+        w: (x2 - x1) * sx,
+        h: (y2 - y1) * sy,
+        tone: label.toLowerCase() === "person" ? "primary" : "warn",
+      } satisfies Detection,
+    ];
+  });
+}
 
 export function LiveCameraFeed({
   cameraName = "CAM-05 · Engg. Workshop",
@@ -43,11 +103,16 @@ export function LiveCameraFeed({
   buildingId?: BuildingId;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const busyRef = useRef(false);
   const [status, setStatus] = useState<"idle" | "starting" | "live" | "error">("idle");
   const [detections, setDetections] = useState<Detection[]>([]);
+  const [peopleCount, setPeopleCount] = useState(0);
+  const [crowd, setCrowd] = useState(false);
+  const [backendOk, setBackendOk] = useState<boolean | null>(null);
   const [fps, setFps] = useState(0);
-  const { pushAlert, reportDetection } = useSentinel();
+  const { reportDetection } = useSentinel();
 
   const stop = useCallback(() => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
@@ -55,6 +120,8 @@ export function LiveCameraFeed({
     if (videoRef.current) videoRef.current.srcObject = null;
     setStatus("idle");
     setDetections([]);
+    setPeopleCount(0);
+    setCrowd(false);
     setFps(0);
   }, []);
 
@@ -75,38 +142,91 @@ export function LiveCameraFeed({
 
   useEffect(() => () => stop(), [stop]);
 
-  // Simulated YOLO inference loop — swap for a Flask/OpenCV/YOLO websocket later.
+  /** Real inference loop: browser frame → Flask → YOLOv8 person detection → crowd logic. */
   useEffect(() => {
     if (status !== "live") return;
-    const tick = window.setInterval(() => {
-      const count = 1 + Math.floor(Math.random() * 3);
-      const next: Detection[] = Array.from({ length: count }, (_, i) => {
-        const pick = LABELS[Math.floor(Math.random() * LABELS.length)]!;
-        return {
-          id: Date.now() + i,
-          label: pick.label,
-          tone: pick.tone,
-          confidence: Number((72 + Math.random() * 27).toFixed(1)),
-          x: 6 + Math.random() * 55,
-          y: 8 + Math.random() * 45,
-          w: 18 + Math.random() * 24,
-          h: 24 + Math.random() * 28,
-        };
-      });
-      setDetections(next);
-      // Auto alert routing: fire/smoke -> emergency, crowd -> warning, person -> ignored.
-      next.forEach((d) =>
-        reportDetection({
-          label: d.label,
-          confidence: d.confidence,
-          cameraId,
-          buildingId,
-        }),
-      );
-      setFps(Number((23 + Math.random() * 7).toFixed(0)));
-    }, 1800);
-    return () => window.clearInterval(tick);
-  }, [status, pushAlert, reportDetection, cameraId, buildingId]);
+    let cancelled = false;
+
+    const sendFrame = async () => {
+      const video = videoRef.current;
+      if (!video || busyRef.current || video.readyState < 2) return;
+      busyRef.current = true;
+      const t0 = performance.now();
+      try {
+        const canvas = (canvasRef.current ??= document.createElement("canvas"));
+        const w = video.videoWidth || 640;
+        const h = video.videoHeight || 480;
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext("2d")?.drawImage(video, 0, 0, w, h);
+        const blob: Blob | null = await new Promise((res) =>
+          canvas.toBlob((b) => res(b), "image/jpeg", 0.7),
+        );
+        if (!blob) return;
+
+        const form = new FormData();
+        form.append("image", blob, "frame.jpg");
+        form.append("file", blob, "frame.jpg");
+        form.append("camera_id", cameraId);
+
+        const res = await fetch(DETECT_URL, { method: "POST", body: form });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const payload: unknown = await res.json();
+        if (cancelled) return;
+
+        const boxes = parseDetections(payload, w, h);
+        const people = boxes.filter((b) => b.label.toLowerCase() === "person");
+        const isCrowd = people.length >= CROWD_THRESHOLD;
+
+        setBackendOk(true);
+        setDetections(boxes);
+        setPeopleCount(people.length);
+        setCrowd(isCrowd);
+        setFps(Number((1000 / Math.max(1, performance.now() - t0)).toFixed(0)));
+
+        // Crowd → warning alert (store applies the 10s per-camera cooldown).
+        if (isCrowd) {
+          const avg =
+            people.reduce((s, p) => s + (p.confidence || 0), 0) / (people.length || 1) || 90;
+          reportDetection({
+            label: "Crowd Detected",
+            confidence: avg,
+            cameraId,
+            buildingId,
+            peopleCount: people.length,
+          });
+        }
+
+        // Forward any non-person YOLO classes (e.g. fire/smoke models) untouched.
+        boxes
+          .filter((b) => b.label.toLowerCase() !== "person")
+          .forEach((b) =>
+            reportDetection({
+              label: b.label,
+              confidence: b.confidence,
+              cameraId,
+              buildingId,
+            }),
+          );
+      } catch {
+        if (!cancelled) {
+          setBackendOk(false);
+          setDetections([]);
+          setPeopleCount(0);
+          setCrowd(false);
+        }
+      } finally {
+        busyRef.current = false;
+      }
+    };
+
+    void sendFrame();
+    const tick = window.setInterval(() => void sendFrame(), 700);
+    return () => {
+      cancelled = true;
+      window.clearInterval(tick);
+    };
+  }, [status, reportDetection, cameraId, buildingId]);
 
   return (
     <div className="glass overflow-hidden rounded-2xl">
@@ -171,7 +291,7 @@ export function LiveCameraFeed({
                     : "Stream idle — press Start Camera"}
               </p>
               <p className="mt-1 font-mono text-xs text-muted-foreground">
-                Inference engine ready · YOLOv8-n
+                Inference engine ready · YOLOv8 via Flask
               </p>
             </div>
           </div>
@@ -181,10 +301,7 @@ export function LiveCameraFeed({
           detections.map((d) => (
             <div
               key={d.id}
-              className={cn(
-                "absolute rounded-md border-2 transition-all duration-700",
-                toneClass[d.tone],
-              )}
+              className={cn("absolute rounded-md border-2", toneClass[d.tone])}
               style={{ left: `${d.x}%`, top: `${d.y}%`, width: `${d.w}%`, height: `${d.h}%` }}
             >
               <span
@@ -198,8 +315,22 @@ export function LiveCameraFeed({
             </div>
           ))}
 
+        {status === "live" && crowd && (
+          <div className="pointer-events-none absolute inset-x-0 top-0 flex justify-center p-3">
+            <div className="flex items-center gap-2 rounded-lg border-2 border-warn bg-warn/20 px-4 py-2 font-mono text-sm font-bold uppercase tracking-wider text-warn backdrop-blur-md animate-pulse">
+              <Users className="size-4" /> Crowd Detected · {peopleCount} people
+            </div>
+          </div>
+        )}
+
+        {status === "live" && (
+          <div className="pointer-events-none absolute right-3 top-3 rounded-md border border-panel-border bg-black/55 px-2 py-1 font-mono text-[11px] text-foreground/90 backdrop-blur">
+            People: {peopleCount} / crowd ≥ {CROWD_THRESHOLD}
+          </div>
+        )}
+
         <div className="pointer-events-none absolute bottom-3 left-3 rounded-md bg-black/55 px-2 py-1 font-mono text-[11px] text-foreground/90 backdrop-blur">
-          {cameraName} · 1920×1080 · AI overlay ON
+          {cameraName} · YOLOv8 overlay ON
         </div>
       </div>
 
@@ -210,8 +341,13 @@ export function LiveCameraFeed({
         <Button onClick={stop} variant="outline" disabled={status !== "live"} className="gap-2">
           <CircleStop className="size-4" /> Stop Camera
         </Button>
+        {status === "live" && backendOk === false && (
+          <span className="font-mono text-[11px] text-danger">
+            Flask detector unreachable at {DETECT_URL}
+          </span>
+        )}
         <p className="ml-auto font-mono text-[11px] text-muted-foreground">
-          {detections.length} object{detections.length === 1 ? "" : "s"} tracked
+          {peopleCount} person{peopleCount === 1 ? "" : "s"} tracked
         </p>
       </div>
     </div>

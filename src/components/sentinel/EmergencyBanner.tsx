@@ -7,6 +7,7 @@ export function EmergencyBanner() {
   const { activeEmergency, acknowledgeEmergency, sirenActive } = useSentinel();
   if (!activeEmergency) return null;
   const a = activeEmergency;
+  const isWarning = a.severity !== "high";
 
   return (
     <div className="sticky top-0 z-30 border-b border-danger/50 bg-danger/15 backdrop-blur-md glow-danger">
@@ -16,7 +17,7 @@ export function EmergencyBanner() {
         </span>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-bold uppercase tracking-wide text-danger">
-            🚨 Emergency — {a.type}
+            🚨 {isWarning ? "Warning" : "Emergency"} — {a.type}
           </p>
           <p className="mt-0.5 flex flex-wrap items-center gap-x-3 font-mono text-[11px] text-muted-foreground">
             <span className="flex items-center gap-1">
