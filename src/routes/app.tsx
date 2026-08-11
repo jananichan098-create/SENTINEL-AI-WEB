@@ -66,7 +66,8 @@ function AppLayout() {
 
         <div className="flex min-w-0 flex-1 flex-col">
           <TopBar onMenu={() => setMobileOpen(true)} />
-          <main className="flex-1 px-4 py-6 lg:px-6">
+          <EmergencyBanner />
+
             <Outlet />
           </main>
           <SentinelFooter />
