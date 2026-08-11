@@ -234,7 +234,7 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
 
   /** Classify an incoming YOLO/backend detection into an alert (10s cooldown per camera+type). */
   const reportDetection = useCallback(
-    ({ label, confidence, cameraId, buildingId }: DetectionInput) => {
+    ({ label, confidence, cameraId, buildingId, peopleCount }: DetectionInput) => {
       const l = label.toLowerCase();
       const isFire = FIRE_WORDS.some((w) => l.includes(w));
       const isCrowd = l.includes("crowd");
@@ -249,7 +249,13 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
       const building = BUILDINGS.find((b) => b.id === buildingId);
       const alert: SecurityAlert = {
         id: `ALR-${counter.current++}`,
-        type: isFire ? (l.includes("smoke") ? "Smoke Detected" : "Fire Detected") : "Crowd Forming",
+        type: isFire
+          ? l.includes("smoke")
+            ? "Smoke Detected"
+            : "Fire Detected"
+          : peopleCount
+            ? `Crowd Detected — ${peopleCount} people`
+            : "Crowd Detected",
         severity: isFire ? "high" : "medium",
         cameraId,
         building: building?.name ?? cameraId,
@@ -259,7 +265,8 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
         status: "Active",
       };
       pushAlert(alert);
-      if (isFire) raiseEmergency(alert);
+      // Fire = emergency, crowd = warning — both raise the banner + siren.
+      raiseEmergency(alert);
     },
     [pushAlert, raiseEmergency],
   );
