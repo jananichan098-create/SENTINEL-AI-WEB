@@ -234,7 +234,7 @@ export function SentinelProvider({ children }: { children: ReactNode }) {
 
   /** Classify an incoming YOLO/backend detection into an alert (10s cooldown per camera+type). */
   const reportDetection = useCallback(
-    ({ label, confidence, cameraId, buildingId, peopleCount }: DetectionInput) => {
+    ({ label, confidence, cameraId, buildingId }: DetectionInput) => {
       const l = label.toLowerCase();
       const isFire = FIRE_WORDS.some((w) => l.includes(w));
       const isCrowd = l.includes("crowd");
