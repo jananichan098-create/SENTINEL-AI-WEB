@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { Download, Filter, Search } from "lucide-react";
 import { EVENT_HISTORY, severityStyles } from "@/lib/sentinel-data";
+import { useSentinel } from "@/lib/sentinel-store";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -47,10 +48,11 @@ const snapshotTint: Record<string, string> = {
 function HistoryPage() {
   const [query, setQuery] = useState("");
   const [date, setDate] = useState("");
+  const { liveHistory } = useSentinel();
 
   const rows = useMemo(
     () =>
-      EVENT_HISTORY.filter((e) => {
+      [...liveHistory, ...EVENT_HISTORY].filter((e) => {
         const q = query.trim().toLowerCase();
         const matchesQuery =
           !q ||
@@ -60,7 +62,7 @@ function HistoryPage() {
         const matchesDate = !date || e.time.startsWith(date);
         return matchesQuery && matchesDate;
       }),
-    [query, date],
+    [query, date, liveHistory],
   );
 
   const exportCsv = () => {

@@ -27,7 +27,7 @@ export const Route = createFileRoute("/app/map")({
 });
 
 function MapPage() {
-  const { emergencyBuildings, triggerTestAlert } = useSentinel();
+  const { emergencyBuildings, warningBuildings, triggerTestAlert } = useSentinel();
   const [selected, setSelected] = useState<BuildingId>("engineering-block");
   const building = BUILDINGS.find((b) => b.id === selected)!;
   const danger = emergencyBuildings.includes(selected);
@@ -49,7 +49,11 @@ function MapPage() {
       <div className="grid gap-4 xl:grid-cols-[1.6fr_1fr]">
         <div className="glass overflow-hidden rounded-2xl p-1.5">
           <div className="h-[560px] w-full overflow-hidden rounded-xl">
-            <CampusMap emergencyBuildings={emergencyBuildings} onSelect={setSelected} />
+            <CampusMap
+              emergencyBuildings={emergencyBuildings}
+              warningBuildings={warningBuildings}
+              onSelect={setSelected}
+            />
           </div>
         </div>
 
