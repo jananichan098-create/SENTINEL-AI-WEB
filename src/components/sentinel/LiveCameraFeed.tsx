@@ -3,6 +3,7 @@ import { Camera, CircleStop, Play, Radio, Signal, VideoOff } from "lucide-react"
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useSentinel } from "@/lib/sentinel-store";
+import type { BuildingId } from "@/lib/sentinel-data";
 
 interface Detection {
   id: number;
@@ -33,16 +34,20 @@ const toneClass = {
 export function LiveCameraFeed({
   cameraName = "CAM-05 · Engg. Workshop",
   location = "Engineering Block — Bay 3",
+  cameraId = "CAM-05",
+  buildingId = "engineering-block",
 }: {
   cameraName?: string;
   location?: string;
+  cameraId?: string;
+  buildingId?: BuildingId;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [status, setStatus] = useState<"idle" | "starting" | "live" | "error">("idle");
   const [detections, setDetections] = useState<Detection[]>([]);
   const [fps, setFps] = useState(0);
-  const { pushAlert } = useSentinel();
+  const { pushAlert, reportDetection } = useSentinel();
 
   const stop = useCallback(() => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
@@ -89,10 +94,19 @@ export function LiveCameraFeed({
         };
       });
       setDetections(next);
+      // Auto alert routing: fire/smoke -> emergency, crowd -> warning, person -> ignored.
+      next.forEach((d) =>
+        reportDetection({
+          label: d.label,
+          confidence: d.confidence,
+          cameraId,
+          buildingId,
+        }),
+      );
       setFps(Number((23 + Math.random() * 7).toFixed(0)));
     }, 1800);
     return () => window.clearInterval(tick);
-  }, [status, pushAlert]);
+  }, [status, pushAlert, reportDetection, cameraId, buildingId]);
 
   return (
     <div className="glass overflow-hidden rounded-2xl">
