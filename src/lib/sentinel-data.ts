@@ -5,6 +5,7 @@ export type AlertType =
   | "Smoke Detected"
   | "Person Detected"
   | "Crowd Forming"
+  | "Crowd Detected"
   | "Unauthorized Entry"
   | "Loitering"
   | "Motion Detected";
