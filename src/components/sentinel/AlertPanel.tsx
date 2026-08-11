@@ -127,7 +127,7 @@ export function FloatingAlertPanel() {
 }
 
 export function EmergencyOverlay() {
-  const { activeEmergency, flashing, dismissEmergency } = useSentinel();
+  const { activeEmergency, flashing, dismissEmergency, acknowledgeEmergency } = useSentinel();
 
   return (
     <>
@@ -177,7 +177,7 @@ export function EmergencyOverlay() {
             </dl>
 
             <div className="mt-5 flex gap-2">
-              <Button variant="destructive" className="flex-1" onClick={dismissEmergency}>
+              <Button variant="destructive" className="flex-1" onClick={acknowledgeEmergency}>
                 Acknowledge &amp; Dispatch
               </Button>
               <Button variant="outline" onClick={dismissEmergency}>
