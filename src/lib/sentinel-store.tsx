@@ -30,6 +30,8 @@ export interface DetectionInput {
   confidence: number;
   cameraId: string;
   buildingId: BuildingId;
+  /** People counted in the frame (used for crowd alerts). */
+  peopleCount?: number;
 }
 
 export type HistoryEvent = SecurityAlert & { snapshot: string };
