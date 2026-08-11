@@ -25,21 +25,36 @@ interface Settings {
   refreshRate: number;
 }
 
+export interface DetectionInput {
+  label: string;
+  confidence: number;
+  cameraId: string;
+  buildingId: BuildingId;
+}
+
+export type HistoryEvent = SecurityAlert & { snapshot: string };
+
 interface SentinelContextValue {
   alerts: SecurityAlert[];
   activeEmergency: SecurityAlert | null;
   flashing: boolean;
   emergencyBuildings: BuildingId[];
+  warningBuildings: BuildingId[];
+  liveHistory: HistoryEvent[];
+  sirenActive: boolean;
   settings: Settings;
   updateSettings: (patch: Partial<Settings>) => void;
   triggerTestAlert: () => void;
   pushAlert: (alert: SecurityAlert) => void;
+  reportDetection: (input: DetectionInput) => void;
   dismissEmergency: () => void;
+  acknowledgeEmergency: () => void;
   acknowledge: (id: string) => void;
   clearAlerts: () => void;
 }
 
 const SentinelContext = createContext<SentinelContextValue | null>(null);
+
 
 const seedAlerts: SecurityAlert[] = [
   {
